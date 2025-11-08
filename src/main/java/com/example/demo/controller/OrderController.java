@@ -25,7 +25,7 @@ public class OrderController {
      * @param request - Contains customer ID, product ID, quantity, cost, and currency
      * @return OrderPlacementResponse with success status and order details
      */
-    @PostMapping("/orders")
+    @PostMapping("/placeOrder")
     public ResponseEntity<OrderPlacementResponse> placeOrder(@RequestBody OrderPlacementRequest request) {
         logger.info("Received order placement request: customer={}, product={}, quantity={}", 
             request.getCustomerId(), request.getProductId(), request.getQuantity());

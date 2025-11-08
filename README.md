@@ -134,7 +134,7 @@ You can:
 
 ### 3. Order and Payment Service API
 
-**Endpoint:** `POST /api/orders`
+**Endpoint:** `POST /api/placeOrder`
 
 **Description:** Places an order with complete payment processing, transaction management, and notifications. The service validates wallet balance, processes payments, credits merchants, collects wallet fees, and maintains comprehensive audit trails.
 

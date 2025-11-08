@@ -477,11 +477,11 @@ graph TB
 
 ## API Endpoints Summary
 
-| API | Method | Endpoint | Description |
-|-----|--------|----------|-------------|
-| Login Service | POST | `/api/login` | Authenticate user with username/password |
+| API | Method | Endpoint                              | Description |
+|-----|--------|---------------------------------------|-------------|
+| Login Service | POST | `/api/login`                          | Authenticate user with username/password |
 | Account Service | GET | `/api/accounts/customer/{customerId}` | Get account details for a customer |
-| Order Service | POST | `/api/orders` | Place an order with payment processing |
+| Order Service | POST | `/api/placeOrder`                    | Place an order with payment processing |
 
 ## Key Features Illustrated in Diagrams
 
