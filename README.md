@@ -177,9 +177,10 @@ This is a Spring Boot application that provides REST APIs for an e-commerce plat
 - **Currency Validation:** Ensures the requested currency is supported and matches product currency
 - **Product Availability Check:** Verifies sufficient inventory before processing
 - **Atomic Transactions:** All operations (debit, credit, fee collection) succeed or rollback together
-- **Merchant Credit:** Merchant receives amount minus 2% wallet fee
+- **Payment Gateway Integration:** Simulates real payment gateway for merchant bank transfers
+- **Post-Payment Operations:** Wallet fee collection and merchant payment initiation happen after successful payment
 - **Transaction Ledger:** All operations recorded in transaction history
-- **Notifications:** Merchant and customer notified of transaction status
+- **Notifications:** Merchant and customer notified of transaction status with settlement timeline
 - **Audit Trail:** Complete audit log maintained for compliance and tracking
 
 **Transaction Flow:**
@@ -187,12 +188,23 @@ This is a Spring Boot application that provides REST APIs for an e-commerce plat
 2. Calculate total amount including 2% wallet fee
 3. Lock customer wallet (pessimistic locking to prevent concurrent modifications)
 4. Debit total amount from customer wallet
-5. Credit merchant account (amount - wallet fee)
-6. Record wallet fee transaction
-7. Update transaction ledger with all operations
-8. Send notification to merchant
-9. Send notification to customer
-10. Capture comprehensive audit logs
+5. Mark payment as successful (payment gateway confirmation)
+6. **WALLET FEE COLLECTION** - Collect 2% wallet fee after successful payment
+7. **MERCHANT PAYMENT INITIATION** - Initiate payment to merchant bank via payment gateway
+8. Credit merchant account (amount - wallet fee) - Local record for settlement
+9. Record all transactions in ledger
+10. Send notification to merchant about payment initiation
+11. Send notification to customer about order status
+12. Capture comprehensive audit logs
+
+**Post-Payment Operations:**
+After payment is confirmed successful, the following operations are automatically performed:
+1. **Wallet Fee Collection:** A 2% wallet fee is collected and recorded as a separate transaction
+2. **Merchant Payment Gateway Initiation:** Payment is initiated to the merchant's bank account via payment gateway
+   - Gateway simulates real-world payment processing
+   - Generates gateway transaction ID for tracking
+   - Updates merchant wallet balance (local record)
+   - Actual settlement to merchant bank occurs within 1-3 business days
 
 **Supported Currencies:**
 - USD - US Dollar

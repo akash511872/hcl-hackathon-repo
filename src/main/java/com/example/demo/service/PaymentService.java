@@ -75,10 +75,39 @@ public class PaymentService {
             
             logger.info("Debited {} {} from customer wallet", totalDebitAmount, order.getCurrency());
             
-            // Step 2: Credit merchant account (after deducting wallet fee)
+            // Step 2: Mark payment as successful (represents payment gateway confirmation)
+            logger.info("Payment confirmed successful by payment gateway for order: {}", order.getOrderNumber());
+            auditService.logAudit("Order", order.getOrderId(), AuditLog.AuditAction.ORDER_PAYMENT_COMPLETED, 
+                "Payment confirmed successful for amount " + totalAmount + " " + order.getCurrency());
+            
+            // ============================================================================
+            // OPERATIONS PERFORMED AFTER SUCCESSFUL PAYMENT
+            // ============================================================================
+            
+            // Step 3: WALLET FEE COLLECTION (After successful payment)
+            logger.info("Collecting wallet fee after successful payment...");
+            Transaction feeTransaction = createTransaction(order, Transaction.TransactionType.WALLET_FEE, 
+                walletFee, order.getCurrency(), "Wallet fee collected after successful payment for order " + order.getOrderNumber());
+            transactions.add(feeTransaction);
+            
+            auditService.logAudit("Order", order.getOrderId(), AuditLog.AuditAction.WALLET_FEE_COLLECTED, 
+                "Wallet fee of " + walletFee + " " + order.getCurrency() + " collected after successful payment");
+            
+            logger.info("✓ Wallet fee of {} {} collected successfully", walletFee, order.getCurrency());
+            
+            // Step 4: INITIATE PAYMENT TO MERCHANT BANK VIA GATEWAY (After successful payment)
+            logger.info("Initiating payment to merchant bank via payment gateway...");
             Merchant merchant = product.getMerchant();
             BigDecimal merchantCreditAmount = totalAmount.subtract(walletFee);
             
+            // Simulate payment gateway initiation to merchant bank
+            boolean gatewaySuccess = initiatePaymentGateway(merchant, merchantCreditAmount, order.getCurrency(), order.getOrderNumber());
+            
+            if (!gatewaySuccess) {
+                throw new PaymentGatewayException("Payment gateway failed to initiate payment to merchant bank");
+            }
+            
+            // Update merchant wallet balance (local record - actual settlement happens later)
             merchant.setWalletBalance(merchant.getWalletBalance().add(merchantCreditAmount));
             merchant.setUpdatedAt(LocalDateTime.now());
             merchantRepository.save(merchant);
@@ -86,29 +115,23 @@ public class PaymentService {
             // Create credit transaction
             Transaction creditTransaction = createTransaction(order, Transaction.TransactionType.CREDIT, 
                 merchantCreditAmount, order.getCurrency(), 
-                "Credit to merchant " + merchant.getMerchantName() + " for order " + order.getOrderNumber());
+                "Payment initiated to merchant " + merchant.getMerchantName() + " via gateway for order " + order.getOrderNumber());
             transactions.add(creditTransaction);
             
             auditService.logAudit("Merchant", merchant.getMerchantId(), AuditLog.AuditAction.MERCHANT_CREDITED, 
-                "Credited " + merchantCreditAmount + " " + order.getCurrency() + " to merchant wallet after deducting wallet fee of " + walletFee);
+                "Payment of " + merchantCreditAmount + " " + order.getCurrency() + 
+                " initiated to merchant bank via gateway (pending settlement). Wallet fee " + walletFee + " deducted.");
             
-            logger.info("Credited {} {} to merchant account (after {} fee)", merchantCreditAmount, order.getCurrency(), walletFee);
+            logger.info("✓ Payment of {} {} initiated to merchant bank via gateway successfully", merchantCreditAmount, order.getCurrency());
             
-            // Step 3: Record wallet fee transaction
-            Transaction feeTransaction = createTransaction(order, Transaction.TransactionType.WALLET_FEE, 
-                walletFee, order.getCurrency(), "Wallet fee collected for order " + order.getOrderNumber());
-            transactions.add(feeTransaction);
+            // ============================================================================
             
-            auditService.logAudit("Order", order.getOrderId(), AuditLog.AuditAction.WALLET_FEE_COLLECTED, 
-                "Wallet fee of " + walletFee + " " + order.getCurrency() + " collected");
-            
-            logger.info("Wallet fee of {} {} collected", walletFee, order.getCurrency());
-            
-            // Step 4: Send notification to merchant
+            // Step 5: Send notification to merchant about payment
             try {
                 notificationService.sendMerchantNotification(order, merchant.getEmail(), 
                     "Payment of " + merchantCreditAmount + " " + order.getCurrency() + 
-                    " received for order " + order.getOrderNumber());
+                    " has been initiated to your bank account for order " + order.getOrderNumber() + 
+                    ". Settlement will be processed within 1-3 business days.");
             } catch (Exception e) {
                 // Notification failure should not fail the transaction
                 logger.error("Failed to send merchant notification, but payment succeeded", e);
@@ -122,13 +145,14 @@ public class PaymentService {
             }
             
             auditService.logAudit("Order", order.getOrderId(), AuditLog.AuditAction.ORDER_PAYMENT_COMPLETED, 
-                "Payment processed successfully for amount " + totalAmount + " " + order.getCurrency());
+                "Payment processing completed: Amount debited, wallet fee collected, merchant payment initiated via gateway");
             
             result.setSuccess(true);
-            result.setMessage("Payment processed successfully");
+            result.setMessage("Payment processed successfully. Wallet fee collected and merchant payment initiated via gateway.");
             result.setTransactions(transactions);
             result.setWalletFee(walletFee);
             result.setRemainingBalance(wallet.getBalance());
+            result.setGatewayInitiated(true);
             
             logger.info("Payment process completed successfully for order: {}", order.getOrderNumber());
             
@@ -149,11 +173,40 @@ public class PaymentService {
             result.setSuccess(false);
             result.setMessage("Payment processing failed: " + e.getMessage());
             result.setTransactions(transactions);
+            result.setGatewayInitiated(false);
             
             throw new PaymentProcessingException("Payment processing failed: " + e.getMessage(), e);
         }
         
         return result;
+    }
+    
+    /**
+     * Simulate payment gateway initiation to merchant bank
+     * In a real implementation, this would call external payment gateway API
+     */
+    private boolean initiatePaymentGateway(Merchant merchant, BigDecimal amount, String currency, String orderNumber) {
+        try {
+            logger.info("Calling payment gateway API to initiate transfer...");
+            logger.info("Gateway Request - Merchant: {}, Amount: {} {}, Order: {}", 
+                merchant.getMerchantName(), amount, currency, orderNumber);
+            
+            // Simulate payment gateway processing time
+            Thread.sleep(100);
+            
+            // Simulate successful gateway response (in production, this would be actual API call)
+            String gatewayTxnId = "GW-" + UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+            logger.info("Gateway Response - Status: SUCCESS, Transaction ID: {}", gatewayTxnId);
+            
+            auditService.logAudit("Merchant", merchant.getMerchantId(), AuditLog.AuditAction.MERCHANT_CREDITED, 
+                "Payment gateway initiated transfer of " + amount + " " + currency + 
+                " to merchant bank account. Gateway Transaction ID: " + gatewayTxnId);
+            
+            return true;
+        } catch (Exception e) {
+            logger.error("Payment gateway initiation failed: {}", e.getMessage());
+            return false;
+        }
     }
     
     /**
@@ -189,6 +242,7 @@ public class PaymentService {
         private List<Transaction> transactions;
         private BigDecimal walletFee;
         private BigDecimal remainingBalance;
+        private boolean gatewayInitiated;
         
         // Getters and Setters
         public boolean isSuccess() {
@@ -230,6 +284,14 @@ public class PaymentService {
         public void setRemainingBalance(BigDecimal remainingBalance) {
             this.remainingBalance = remainingBalance;
         }
+        
+        public boolean isGatewayInitiated() {
+            return gatewayInitiated;
+        }
+        
+        public void setGatewayInitiated(boolean gatewayInitiated) {
+            this.gatewayInitiated = gatewayInitiated;
+        }
     }
     
     /**
@@ -244,6 +306,12 @@ public class PaymentService {
     public static class PaymentProcessingException extends RuntimeException {
         public PaymentProcessingException(String message, Throwable cause) {
             super(message, cause);
+        }
+    }
+    
+    public static class PaymentGatewayException extends RuntimeException {
+        public PaymentGatewayException(String message) {
+            super(message);
         }
     }
 }
