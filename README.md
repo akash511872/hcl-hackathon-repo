@@ -101,6 +101,111 @@ This is a Spring Boot application that provides REST APIs for an e-commerce plat
 ]
 ```
 
+### 3. Order and Payment Service API
+
+**Endpoint:** `POST /api/orders`
+
+**Description:** Places an order with complete payment processing, transaction management, and notifications. The service validates wallet balance, processes payments, credits merchants, collects wallet fees, and maintains comprehensive audit trails.
+
+**Request Body:**
+```json
+{
+  "customerId": 1,
+  "productId": 2,
+  "quantity": 2,
+  "productCost": 45.00,
+  "currency": "USD"
+}
+```
+
+**Request Parameters:**
+- `customerId` - The unique identifier of the customer placing the order
+- `productId` - The unique identifier of the product to purchase
+- `quantity` - Number of items to order (must be positive)
+- `productCost` - Cost per unit of the product
+- `currency` - Currency code (supported: USD, EUR, GBP, INR)
+
+**Response (Success):**
+```json
+{
+  "success": true,
+  "message": "Order placed successfully",
+  "orderDetails": {
+    "orderId": 1,
+    "orderNumber": "ORD-A1B2C3D4",
+    "productName": "Wireless Mouse",
+    "merchantName": "Tech Store Inc",
+    "quantity": 2,
+    "totalAmount": 90.00,
+    "walletFee": 1.80,
+    "currency": "USD",
+    "orderStatus": "COMPLETED",
+    "remainingWalletBalance": 19908.20
+  }
+}
+```
+
+**Response (Insufficient Balance):**
+```json
+{
+  "success": false,
+  "message": "Insufficient wallet balance. Required: 91.80 USD, Available: 100.00 USD",
+  "orderDetails": null
+}
+```
+
+**Response (Product Not Available):**
+```json
+{
+  "success": false,
+  "message": "Insufficient product quantity. Available: 5, Requested: 10",
+  "orderDetails": null
+}
+```
+
+**Response (Invalid Currency):**
+```json
+{
+  "success": false,
+  "message": "Currency JPY is not supported. Supported currencies: USD, EUR, GBP, INR",
+  "orderDetails": null
+}
+```
+
+**Payment Processing Features:**
+- **Wallet Balance Validation:** Checks if customer has sufficient balance including 2% wallet fee
+- **Currency Validation:** Ensures the requested currency is supported and matches product currency
+- **Product Availability Check:** Verifies sufficient inventory before processing
+- **Atomic Transactions:** All operations (debit, credit, fee collection) succeed or rollback together
+- **Merchant Credit:** Merchant receives amount minus 2% wallet fee
+- **Transaction Ledger:** All operations recorded in transaction history
+- **Notifications:** Merchant and customer notified of transaction status
+- **Audit Trail:** Complete audit log maintained for compliance and tracking
+
+**Transaction Flow:**
+1. Validate customer, product, currency, and availability
+2. Calculate total amount including 2% wallet fee
+3. Lock customer wallet (pessimistic locking to prevent concurrent modifications)
+4. Debit total amount from customer wallet
+5. Credit merchant account (amount - wallet fee)
+6. Record wallet fee transaction
+7. Update transaction ledger with all operations
+8. Send notification to merchant
+9. Send notification to customer
+10. Capture comprehensive audit logs
+
+**Supported Currencies:**
+- USD - US Dollar
+- EUR - Euro
+- GBP - British Pound
+- INR - Indian Rupee
+
+**Wallet Fee:**
+- A 2% fee is applied to all transactions
+- Fee is deducted from the amount credited to the merchant
+- Customer pays: Product Cost + Wallet Fee
+- Merchant receives: Product Cost - Wallet Fee
+
 ## Running the Application
 
 ### Prerequisites
@@ -120,14 +225,40 @@ java -jar target/demo-0.0.1-SNAPSHOT.jar
 The application will start on `http://localhost:8080`
 
 ### Test Data
-The application initializes with two test customers and their accounts:
+The application initializes with comprehensive test data for all entities:
 
 **Customers:**
 1. **Username:** john.doe, **Password:** Test@123, **Customer ID:** 1
-   - Account 1: ACC1001 (SAVINGS) - Balance: $5,000.00
-   - Account 2: ACC1002 (CHECKING) - Balance: $10,000.00
+   - Accounts: ACC1001 (SAVINGS) - $5,000.00, ACC1002 (CHECKING) - $10,000.00
+   - Wallet: $20,000.00 USD
 2. **Username:** jane.smith, **Password:** Pass@word1, **Customer ID:** 2
-   - Account 1: ACC2001 (SAVINGS) - Balance: $7,500.50
+   - Account: ACC2001 (SAVINGS) - $7,500.50
+   - Wallet: $15,000.00 USD
+3. **Username:** bob.wilson, **Password:** Secure@456, **Customer ID:** 3
+   - Accounts: ACC3001 (CHECKING) - $12,000.00, ACC3002 (SAVINGS) - $3,000.00
+   - Wallet: $8,000.00 USD
+4. **Username:** alice.brown, **Password:** Strong@789, **Customer ID:** 4
+   - Account: ACC4001 (CHECKING) - $25,000.00
+   - Wallet: $30,000.00 USD
+
+**Merchants:**
+1. **Tech Store Inc** (TECH001) - Wallet: $50,000.00
+2. **Fashion World** (FASH001) - Wallet: $30,000.00
+3. **Book Haven** (BOOK001) - Wallet: $15,000.00
+
+**Products:**
+1. **Laptop Pro 15** - $1,200.00 (50 available) - Tech Store Inc
+2. **Wireless Mouse** - $45.00 (200 available) - Tech Store Inc
+3. **Designer T-Shirt** - $75.00 (100 available) - Fashion World
+4. **Mechanical Keyboard** - $150.00 (75 available) - Tech Store Inc
+5. **Running Shoes** - $120.00 (60 available) - Fashion World
+6. **Programming Book** - $55.00 (150 available) - Book Haven
+
+**Sample Orders:**
+- 3 completed historical orders with full transaction records
+- Transaction ledger entries for debit, credit, and wallet fee operations
+- Notification records (both successful and failed scenarios)
+- Comprehensive audit logs tracking the complete order lifecycle
 
 ## API Testing Examples
 
@@ -174,6 +305,73 @@ curl -X GET http://localhost:8080/api/accounts/customer/999 \
   -H "Content-Type: application/json"
 ```
 
+### Order Service
+
+#### Place Order for Wireless Mouse
+```bash
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": 1,
+    "productId": 2,
+    "quantity": 2,
+    "productCost": 45.00,
+    "currency": "USD"
+  }'
+```
+
+#### Place Order for Designer T-Shirt
+```bash
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": 3,
+    "productId": 3,
+    "quantity": 1,
+    "productCost": 75.00,
+    "currency": "USD"
+  }'
+```
+
+#### Place Order for Programming Book
+```bash
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": 4,
+    "productId": 6,
+    "quantity": 3,
+    "productCost": 55.00,
+    "currency": "USD"
+  }'
+```
+
+#### Order with Insufficient Balance (Will Fail)
+```bash
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": 3,
+    "productId": 1,
+    "quantity": 10,
+    "productCost": 1200.00,
+    "currency": "USD"
+  }'
+```
+
+#### Order with Unsupported Currency (Will Fail)
+```bash
+curl -X POST http://localhost:8080/api/orders \
+  -H "Content-Type: application/json" \
+  -d '{
+    "customerId": 1,
+    "productId": 2,
+    "quantity": 1,
+    "productCost": 45.00,
+    "currency": "JPY"
+  }'
+```
+
 ## Database
 
 The application uses H2 in-memory database for development/testing. The database is reset on each application restart.
@@ -190,3 +388,32 @@ Access the H2 console at: `http://localhost:8080/h2-console`
 - H2 Database
 - Maven
 - Java 11
+
+## Architecture
+
+### Layered Design
+- **Controller Layer:** Handles HTTP requests and responses (LoginController, AccountController, OrderController)
+- **Service Layer:** Contains business logic and transaction management (LoginService, AccountService, OrderService, PaymentService, NotificationService, AuditService)
+- **Repository Layer:** Manages database operations with JPA repositories
+- **Model Layer:** Domain entities with proper JPA annotations and relationships
+
+### Key Features
+- **Transaction Management:** ACID-compliant transactions with automatic rollback on failures
+- **Pessimistic Locking:** Prevents concurrent wallet modifications
+- **Audit Trail:** Comprehensive logging of all operations
+- **Error Handling:** Robust validation and error responses
+- **Notification System:** Merchant and customer notifications with retry logic
+- **Security:** Password validation and secure data handling
+
+## Error Handling
+
+The application provides comprehensive error handling with appropriate HTTP status codes:
+
+- **200 OK:** Successful GET requests
+- **201 Created:** Successful order placement
+- **400 Bad Request:** Invalid input data, validation failures
+- **401 Unauthorized:** Invalid login credentials
+- **404 Not Found:** Customer or resource not found
+- **500 Internal Server Error:** Unexpected server errors
+
+All error responses include descriptive messages to help diagnose issues.
