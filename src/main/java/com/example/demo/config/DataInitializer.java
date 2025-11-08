@@ -1,9 +1,7 @@
 package com.example.demo.config;
 
-import com.example.demo.model.Account;
-import com.example.demo.model.Customer;
-import com.example.demo.repository.AccountRepository;
-import com.example.demo.repository.CustomerRepository;
+import com.example.demo.model.*;
+import com.example.demo.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
@@ -18,6 +16,15 @@ public class DataInitializer implements CommandLineRunner {
     
     @Autowired
     private AccountRepository accountRepository;
+    
+    @Autowired
+    private MerchantRepository merchantRepository;
+    
+    @Autowired
+    private ProductRepository productRepository;
+    
+    @Autowired
+    private WalletRepository walletRepository;
     
     @Override
     public void run(String... args) throws Exception {
@@ -70,6 +77,81 @@ public class DataInitializer implements CommandLineRunner {
             accountRepository.save(account3);
             
             System.out.println("Test accounts initialized successfully!");
+            
+            // Create test wallets for customers
+            Wallet wallet1 = new Wallet();
+            wallet1.setCustomer(customer1);
+            wallet1.setBalance(new BigDecimal("20000.00"));
+            wallet1.setCurrency("USD");
+            wallet1.setIsActive(true);
+            
+            Wallet wallet2 = new Wallet();
+            wallet2.setCustomer(customer2);
+            wallet2.setBalance(new BigDecimal("15000.00"));
+            wallet2.setCurrency("USD");
+            wallet2.setIsActive(true);
+            
+            walletRepository.save(wallet1);
+            walletRepository.save(wallet2);
+            
+            System.out.println("Test wallets initialized successfully!");
+            
+            // Create test merchants
+            Merchant merchant1 = new Merchant();
+            merchant1.setMerchantName("Tech Store Inc");
+            merchant1.setMerchantCode("TECH001");
+            merchant1.setEmail("merchant@techstore.com");
+            merchant1.setPhoneNumber("555-1234");
+            merchant1.setAddress("789 Business Blvd, City, State");
+            merchant1.setWalletBalance(new BigDecimal("50000.00"));
+            merchant1.setCurrency("USD");
+            merchant1.setIsActive(true);
+            
+            Merchant merchant2 = new Merchant();
+            merchant2.setMerchantName("Fashion World");
+            merchant2.setMerchantCode("FASH001");
+            merchant2.setEmail("merchant@fashionworld.com");
+            merchant2.setPhoneNumber("555-5678");
+            merchant2.setAddress("321 Fashion Ave, City, State");
+            merchant2.setWalletBalance(new BigDecimal("30000.00"));
+            merchant2.setCurrency("USD");
+            merchant2.setIsActive(true);
+            
+            merchant1 = merchantRepository.save(merchant1);
+            merchant2 = merchantRepository.save(merchant2);
+            
+            System.out.println("Test merchants initialized successfully!");
+            
+            // Create test products
+            Product product1 = new Product();
+            product1.setProductName("Laptop Pro 15");
+            product1.setDescription("High-performance laptop with 16GB RAM");
+            product1.setPrice(new BigDecimal("1200.00"));
+            product1.setCurrency("USD");
+            product1.setAvailableQuantity(50);
+            product1.setMerchant(merchant1);
+            
+            Product product2 = new Product();
+            product2.setProductName("Wireless Mouse");
+            product2.setDescription("Ergonomic wireless mouse");
+            product2.setPrice(new BigDecimal("45.00"));
+            product2.setCurrency("USD");
+            product2.setAvailableQuantity(200);
+            product2.setMerchant(merchant1);
+            
+            Product product3 = new Product();
+            product3.setProductName("Designer T-Shirt");
+            product3.setDescription("Premium cotton designer t-shirt");
+            product3.setPrice(new BigDecimal("75.00"));
+            product3.setCurrency("USD");
+            product3.setAvailableQuantity(100);
+            product3.setMerchant(merchant2);
+            
+            productRepository.save(product1);
+            productRepository.save(product2);
+            productRepository.save(product3);
+            
+            System.out.println("Test products initialized successfully!");
         }
     }
 }
