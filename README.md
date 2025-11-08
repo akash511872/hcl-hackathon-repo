@@ -2,6 +2,19 @@
 
 This is a Spring Boot application that provides REST APIs for an e-commerce platform.
 
+## 📊 Flow Diagrams
+
+**[VIEW COMPREHENSIVE FLOW DIAGRAMS](FLOW_DIAGRAM.md)** - Complete visual documentation of all API flows, system architecture, and transaction processing.
+
+The flow diagrams include:
+- Overview of all APIs and their interactions
+- Detailed sequence diagrams for Login, Account, and Order services
+- Payment processing flow with post-payment operations
+- System architecture with layered design
+- Data model relationships (ER diagram)
+- Error handling flows
+- Transaction management visualization
+
 ## Features Implemented
 
 ### 1. Login Service API
