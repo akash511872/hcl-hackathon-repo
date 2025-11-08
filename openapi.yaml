@@ -1,0 +1,562 @@
+openapi: 3.0.3
+info:
+  title: E-Commerce Backend Platform API
+  description: |
+    Comprehensive REST API for e-commerce backend platform with Login, Account, and Order/Payment services.
+    
+    This API provides:
+    - **Authentication** - Secure login with password validation
+    - **Account Management** - Retrieve customer account details and balances
+    - **Order Processing** - Place orders with integrated payment processing, wallet fee collection, and payment gateway integration
+    
+    ## Features
+    - Transaction management with automatic rollback on failures
+    - Comprehensive audit logging
+    - Notification service with retry logic
+    - Payment gateway integration
+    - Wallet fee collection (2%)
+    - Support for multiple currencies (USD, EUR, GBP, INR)
+    
+    ## Test Credentials
+    - john.doe / Test@123
+    - jane.smith / Pass@word1
+    - bob.wilson / Secure@456
+    - alice.brown / Strong@789
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: Apache 2.0
+    url: https://www.apache.org/licenses/LICENSE-2.0.html
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+  - url: https://api.example.com
+    description: Production server
+
+tags:
+  - name: Authentication
+    description: User authentication and login operations
+  - name: Account Management
+    description: Customer account and balance operations
+  - name: Order & Payment
+    description: Order placement and payment processing operations
+
+paths:
+  /api/login:
+    post:
+      tags:
+        - Authentication
+      summary: User login
+      description: |
+        Authenticate user with username and password. Password must meet the following requirements:
+        - Minimum 8 characters
+        - At least one uppercase letter
+        - At least one lowercase letter
+        - At least one digit
+        - At least one special character (@$!%*?&)
+      operationId: login
+      requestBody:
+        description: Login credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            examples:
+              validLogin:
+                summary: Valid login credentials
+                value:
+                  username: john.doe
+                  password: Test@123
+              invalidPassword:
+                summary: Invalid password format
+                value:
+                  username: john.doe
+                  password: weak
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                success:
+                  summary: Successful login
+                  value:
+                    success: true
+                    message: Login successful
+                    customerDetails:
+                      customerId: 1
+                      username: john.doe
+                      firstName: John
+                      lastName: Doe
+                      email: john.doe@email.com
+                      phoneNumber: "+1234567890"
+                      address: "123 Main St, City, Country"
+        '401':
+          description: Authentication failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+              examples:
+                invalidUsername:
+                  summary: Invalid username
+                  value:
+                    success: false
+                    message: Invalid username or password
+                    customerDetails: null
+                invalidPassword:
+                  summary: Invalid password
+                  value:
+                    success: false
+                    message: Invalid username or password
+                    customerDetails: null
+                passwordValidationFailed:
+                  summary: Password validation failed
+                  value:
+                    success: false
+                    message: "Password must be at least 8 characters long and contain uppercase, lowercase, digit, and special character"
+                    customerDetails: null
+
+  /api/accounts/customer/{customerId}:
+    get:
+      tags:
+        - Account Management
+      summary: Get customer accounts
+      description: Retrieve all account details for a specific customer including account numbers, balances, and account types
+      operationId: getAccountsByCustomerId
+      parameters:
+        - name: customerId
+          in: path
+          description: Customer ID
+          required: true
+          schema:
+            type: integer
+            format: int64
+            example: 1
+      responses:
+        '200':
+          description: Accounts retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountDetailsResponse'
+              examples:
+                multipleAccounts:
+                  summary: Customer with multiple accounts
+                  value:
+                    - success: true
+                      message: Account details retrieved successfully
+                      accountDetails:
+                        accountId: 1
+                        accountNumber: "ACC-1001"
+                        balance: 5000.00
+                        accountType: SAVINGS
+                        customerId: 1
+                        customerName: "John Doe"
+                    - success: true
+                      message: Account details retrieved successfully
+                      accountDetails:
+                        accountId: 2
+                        accountNumber: "ACC-1002"
+                        balance: 15000.50
+                        accountType: CHECKING
+                        customerId: 1
+                        customerName: "John Doe"
+                singleAccount:
+                  summary: Customer with single account
+                  value:
+                    - success: true
+                      message: Account details retrieved successfully
+                      accountDetails:
+                        accountId: 3
+                        accountNumber: "ACC-2001"
+                        balance: 25000.00
+                        accountType: SAVINGS
+                        customerId: 2
+                        customerName: "Jane Smith"
+        '404':
+          description: Customer not found or no accounts
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AccountDetailsResponse'
+              examples:
+                customerNotFound:
+                  summary: Customer does not exist
+                  value:
+                    - success: false
+                      message: Customer not found
+                      accountDetails: null
+
+  /api/orders:
+    post:
+      tags:
+        - Order & Payment
+      summary: Place order
+      description: |
+        Place an order with integrated payment processing. The system will:
+        1. Validate customer, product, currency, and availability
+        2. Check wallet balance (including 2% wallet fee)
+        3. Debit customer wallet
+        4. Process payment through gateway
+        5. Collect wallet fee (2%)
+        6. Initiate payment to merchant bank
+        7. Send notifications
+        8. Create comprehensive audit logs
+        
+        All operations are atomic with automatic rollback on any failure.
+      operationId: placeOrder
+      requestBody:
+        description: Order details
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderPlacementRequest'
+            examples:
+              validOrder:
+                summary: Valid order placement
+                value:
+                  customerId: 1
+                  productId: 1
+                  quantity: 1
+                  productCost: 1200.00
+                  currency: USD
+              multipleItems:
+                summary: Order with multiple items
+                value:
+                  customerId: 2
+                  productId: 2
+                  quantity: 5
+                  productCost: 45.00
+                  currency: USD
+              europeanOrder:
+                summary: Order in EUR currency
+                value:
+                  customerId: 3
+                  productId: 3
+                  quantity: 2
+                  productCost: 75.00
+                  currency: EUR
+      responses:
+        '201':
+          description: Order placed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPlacementResponse'
+              examples:
+                success:
+                  summary: Successful order placement
+                  value:
+                    success: true
+                    message: Order placed successfully
+                    orderDetails:
+                      orderId: 101
+                      orderNumber: "ORD-2024-001"
+                      productName: "Laptop Pro"
+                      merchantName: "Tech Store Inc"
+                      quantity: 1
+                      totalAmount: 1224.00
+                      walletFee: 24.00
+                      currency: USD
+                      orderStatus: COMPLETED
+                      remainingWalletBalance: 18776.00
+        '400':
+          description: Order validation failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPlacementResponse'
+              examples:
+                customerNotFound:
+                  summary: Customer does not exist
+                  value:
+                    success: false
+                    message: Customer not found
+                    orderDetails: null
+                productNotFound:
+                  summary: Product does not exist
+                  value:
+                    success: false
+                    message: Product not found
+                    orderDetails: null
+                insufficientBalance:
+                  summary: Insufficient wallet balance
+                  value:
+                    success: false
+                    message: Insufficient wallet balance. Required: 1224.00 USD (including 2% wallet fee), Available: 500.00 USD
+                    orderDetails: null
+                invalidCurrency:
+                  summary: Currency not supported
+                  value:
+                    success: false
+                    message: Currency JPY is not supported. Supported currencies: USD, EUR, GBP, INR
+                    orderDetails: null
+                currencyMismatch:
+                  summary: Currency mismatch with wallet
+                  value:
+                    success: false
+                    message: Currency mismatch. Wallet currency is USD but order currency is EUR
+                    orderDetails: null
+                productNotAvailable:
+                  summary: Product out of stock
+                  value:
+                    success: false
+                    message: Product is not available for purchase
+                    orderDetails: null
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPlacementResponse'
+              examples:
+                unexpectedError:
+                  summary: Unexpected error occurred
+                  value:
+                    success: false
+                    message: An unexpected error occurred. Please try again later.
+                    orderDetails: null
+
+components:
+  schemas:
+    LoginRequest:
+      type: object
+      required:
+        - username
+        - password
+      properties:
+        username:
+          type: string
+          description: User's username
+          example: john.doe
+          minLength: 1
+        password:
+          type: string
+          description: User's password (min 8 chars, must contain uppercase, lowercase, digit, special character)
+          format: password
+          example: Test@123
+          minLength: 8
+      description: Login credentials for authentication
+
+    LoginResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indicates if login was successful
+          example: true
+        message:
+          type: string
+          description: Response message
+          example: Login successful
+        customerDetails:
+          $ref: '#/components/schemas/CustomerDetails'
+      description: Login response with customer details
+
+    CustomerDetails:
+      type: object
+      properties:
+        customerId:
+          type: integer
+          format: int64
+          description: Unique customer identifier
+          example: 1
+        username:
+          type: string
+          description: Customer's username
+          example: john.doe
+        firstName:
+          type: string
+          description: Customer's first name
+          example: John
+        lastName:
+          type: string
+          description: Customer's last name
+          example: Doe
+        email:
+          type: string
+          format: email
+          description: Customer's email address
+          example: john.doe@email.com
+        phoneNumber:
+          type: string
+          description: Customer's phone number
+          example: "+1234567890"
+        address:
+          type: string
+          description: Customer's address
+          example: "123 Main St, City, Country"
+      description: Detailed customer information
+
+    AccountDetailsResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indicates if request was successful
+          example: true
+        message:
+          type: string
+          description: Response message
+          example: Account details retrieved successfully
+        accountDetails:
+          $ref: '#/components/schemas/AccountDetails'
+      description: Account details response
+
+    AccountDetails:
+      type: object
+      properties:
+        accountId:
+          type: integer
+          format: int64
+          description: Unique account identifier
+          example: 1
+        accountNumber:
+          type: string
+          description: Account number
+          example: "ACC-1001"
+        balance:
+          type: number
+          format: decimal
+          description: Current account balance
+          example: 5000.00
+        accountType:
+          type: string
+          enum: [SAVINGS, CHECKING, BUSINESS]
+          description: Type of account
+          example: SAVINGS
+        customerId:
+          type: integer
+          format: int64
+          description: Associated customer ID
+          example: 1
+        customerName:
+          type: string
+          description: Customer's full name
+          example: "John Doe"
+      description: Detailed account information
+
+    OrderPlacementRequest:
+      type: object
+      required:
+        - customerId
+        - productId
+        - quantity
+        - productCost
+        - currency
+      properties:
+        customerId:
+          type: integer
+          format: int64
+          description: Customer ID placing the order
+          example: 1
+          minimum: 1
+        productId:
+          type: integer
+          format: int64
+          description: Product ID to order
+          example: 1
+          minimum: 1
+        quantity:
+          type: integer
+          description: Quantity to order
+          example: 1
+          minimum: 1
+        productCost:
+          type: number
+          format: decimal
+          description: Cost per unit of product
+          example: 1200.00
+          minimum: 0.01
+        currency:
+          type: string
+          enum: [USD, EUR, GBP, INR]
+          description: Currency for the transaction
+          example: USD
+      description: Order placement request details
+
+    OrderPlacementResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+          description: Indicates if order was placed successfully
+          example: true
+        message:
+          type: string
+          description: Response message
+          example: Order placed successfully
+        orderDetails:
+          $ref: '#/components/schemas/OrderDetails'
+      description: Order placement response
+
+    OrderDetails:
+      type: object
+      properties:
+        orderId:
+          type: integer
+          format: int64
+          description: Unique order identifier
+          example: 101
+        orderNumber:
+          type: string
+          description: Human-readable order number
+          example: "ORD-2024-001"
+        productName:
+          type: string
+          description: Name of the ordered product
+          example: "Laptop Pro"
+        merchantName:
+          type: string
+          description: Name of the merchant
+          example: "Tech Store Inc"
+        quantity:
+          type: integer
+          description: Quantity ordered
+          example: 1
+        totalAmount:
+          type: number
+          format: decimal
+          description: Total amount charged (including wallet fee)
+          example: 1224.00
+        walletFee:
+          type: number
+          format: decimal
+          description: Wallet fee charged (2% of product cost)
+          example: 24.00
+        currency:
+          type: string
+          description: Currency of the transaction
+          example: USD
+        orderStatus:
+          type: string
+          enum: [PENDING, COMPLETED, FAILED, CANCELLED]
+          description: Current status of the order
+          example: COMPLETED
+        remainingWalletBalance:
+          type: number
+          format: decimal
+          description: Customer's remaining wallet balance after order
+          example: 18776.00
+      description: Detailed order information
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT authentication (future implementation)
+
+security: []

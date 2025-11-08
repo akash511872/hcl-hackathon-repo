@@ -2,7 +2,9 @@
 
 This is a Spring Boot application that provides REST APIs for an e-commerce platform.
 
-## 📊 Flow Diagrams
+## 📚 API Documentation
+
+**[VIEW OPENAPI SPECIFICATION](openapi.yaml)** - Complete OpenAPI 3.0 specification with all endpoints, schemas, and examples.
 
 **[VIEW COMPREHENSIVE FLOW DIAGRAMS](FLOW_DIAGRAM.md)** - Complete visual documentation of all API flows, system architecture, and transaction processing.
 
@@ -14,6 +16,22 @@ The flow diagrams include:
 - Data model relationships (ER diagram)
 - Error handling flows
 - Transaction management visualization
+
+## OpenAPI Specification
+
+The `openapi.yaml` file provides comprehensive API documentation including:
+- All REST endpoint definitions
+- Request/response schemas with validation rules
+- Detailed examples for success and error scenarios
+- Supported HTTP status codes
+- Authentication requirements (future implementation)
+- Currency and validation constraints
+
+You can:
+- View the spec directly in GitHub
+- Import into Swagger UI for interactive testing
+- Generate client SDKs using OpenAPI Generator
+- Use for API testing tools like Postman or Insomnia
 
 ## Features Implemented
 
