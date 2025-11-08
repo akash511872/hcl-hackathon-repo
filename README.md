@@ -13,7 +13,7 @@ This is a Spring Boot application that provides REST APIs for an e-commerce plat
 **Request Body:**
 ```json
 {
-  "username": "john.doe",
+  "username": "Akash",
   "password": "Test@123"
 }
 ```

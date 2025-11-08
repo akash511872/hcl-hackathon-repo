@@ -59,19 +59,24 @@ public class AccountService {
         // Create response with account details
         List<AccountDetailsResponse> responses = new ArrayList<>();
         for (Account account : accounts) {
-            AccountDetailsResponse.AccountDetails details = new AccountDetailsResponse.AccountDetails(
-                account.getAccountId(),
-                account.getAccountNumber(),
-                account.getBalance(),
-                account.getAccountType(),
-                customer.getCustomerId(),
-                customer.getFirstName() + " " + customer.getLastName()
-            );
-            
-            AccountDetailsResponse response = new AccountDetailsResponse(true, "Account details retrieved successfully", details);
+            AccountDetailsResponse response = getAccountDetailsResponse(account, customer);
             responses.add(response);
         }
         
         return responses;
+    }
+
+    private static AccountDetailsResponse getAccountDetailsResponse(Account account, Customer customer) {
+        AccountDetailsResponse.AccountDetails details = new AccountDetailsResponse.AccountDetails(
+            account.getAccountId(),
+            account.getAccountNumber(),
+            account.getBalance(),
+            account.getAccountType(),
+            customer.getCustomerId(),
+            customer.getFirstName() + " " + customer.getLastName()
+        );
+
+        AccountDetailsResponse response = new AccountDetailsResponse(true, "Account details retrieved successfully", details);
+        return response;
     }
 }

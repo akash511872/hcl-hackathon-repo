@@ -45,11 +45,11 @@ public class DataInitializer implements CommandLineRunner {
         // Create test customers with valid passwords
         if (customerRepository.count() == 0) {
             Customer customer1 = new Customer();
-            customer1.setUsername("john.doe");
+            customer1.setUsername("Akash.Khattri");
             customer1.setPassword("Test@123"); // Valid password format
-            customer1.setFirstName("John");
-            customer1.setLastName("Doe");
-            customer1.setEmail("john.doe@example.com");
+            customer1.setFirstName("Akash");
+            customer1.setLastName("Khattri");
+            customer1.setEmail("Akash.Khattri@example.com");
             customer1.setPhoneNumber("123-456-7890");
             customer1.setAddress("123 Main St, City, State");
             

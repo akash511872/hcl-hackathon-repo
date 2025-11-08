@@ -85,7 +85,7 @@ public class OrderService {
             order.setStatus(Order.OrderStatus.PAYMENT_IN_PROGRESS);
             orderRepository.save(order);
             
-            auditService.logAudit("Order", order.getOrderId(), AuditLog.AuditAction.ORDER_VALIDATED, 
+            auditService.logAudit("Order", order.getOrderId(), AuditLog.AuditAction.ORDER_VALIDATED,
                 "Order validated, initiating payment", customer.getCustomerId());
             
             // Step 10: Process payment

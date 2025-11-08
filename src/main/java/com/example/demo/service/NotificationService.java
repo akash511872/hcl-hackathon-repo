@@ -75,7 +75,7 @@ public class NotificationService {
     /**
      * Send notification to customer
      */
-    @Transactional(propagation = Propagation.REQUIRES_NEW, noRollbackFor = Exception.class)
+
     public void sendCustomerNotification(Order order, String customerEmail, String message) {
         Notification notification = new Notification();
         notification.setRecipient(customerEmail);
